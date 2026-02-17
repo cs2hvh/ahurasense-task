@@ -102,8 +102,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     const isAdmin = auth.session.user.role === "admin";
+    const workspaceMembership = await prisma.workspaceMember.findFirst({
+      where: {
+        workspaceId: issue.project.workspaceId,
+        userId: auth.session.user.id,
+      },
+      select: { role: true },
+    });
+    const isWorkspaceOwner = workspaceMembership?.role === "owner";
 
-    if (!isAdmin) {
+    if (!isAdmin && !isWorkspaceOwner) {
       const member = await prisma.projectMember.findFirst({
         where: {
           projectId: issue.projectId,
@@ -117,7 +125,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
       const isOwner = issue.reporterId === auth.session.user.id || issue.assigneeId === auth.session.user.id;
       if (!isOwner) {
-        return fail("Only issue owner can edit this issue", 403);
+        return fail("Only workspace owner, admin, or issue owner can edit this issue", 403);
       }
     }
 

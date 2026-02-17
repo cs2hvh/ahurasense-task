@@ -10,7 +10,6 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
   }
 
   const { slug } = await params;
-  const canViewAllWorkspaceProjects = canBypassProjectMembership(auth.session.user.role);
 
   const membership = await prisma.workspaceMember.findFirst({
     where: {
@@ -19,10 +18,15 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
     },
     include: {
       workspace: {
-        include: {
-          projects: {
-            where: canViewAllWorkspaceProjects ? undefined : { members: { some: { userId: auth.session.user.id } } },
-          },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          ownerId: true,
+          avatarUrl: true,
+          createdAt: true,
+          updatedAt: true,
         },
       },
     },
@@ -32,10 +36,28 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
     return fail("Workspace not found", 404);
   }
 
+  const canViewAllWorkspaceProjects = canBypassProjectMembership(auth.session.user.role, membership.role);
+
+  const projects = await prisma.project.findMany({
+    where: {
+      workspaceId: membership.workspace.id,
+      ...(canViewAllWorkspaceProjects
+        ? {}
+        : {
+            members: {
+              some: {
+                userId: auth.session.user.id,
+              },
+            },
+          }),
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+
   return ok({
     ...membership.workspace,
+    projects,
     membershipRole: membership.role,
   });
 }
-
 

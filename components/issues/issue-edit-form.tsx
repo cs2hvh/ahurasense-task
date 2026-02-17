@@ -103,7 +103,9 @@ export function IssueEditForm({ issueId, canEdit, initial, statuses, members, sp
       <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">Edit Issue</h2>
 
       {!canEdit ? (
-        <p className="text-xs text-[var(--color-warning)]">Only admins or the issue owner can edit this issue.</p>
+        <p className="text-xs text-[var(--color-warning)]">
+          Only workspace owners, admins, or the issue owner can edit this issue.
+        </p>
       ) : null}
 
       <div className="grid gap-1">

@@ -25,10 +25,12 @@ export async function GET(_: Request, { params }: { params: Promise<{ workspaceI
     return fail("Forbidden", 403);
   }
 
+  const canViewAllWorkspaceProjects = canBypassProjectMembership(auth.session.user.role, membership.role);
+
   const projects = await prisma.project.findMany({
     where: {
       workspaceId,
-      ...(canBypassProjectMembership(auth.session.user.role)
+      ...(canViewAllWorkspaceProjects
         ? {}
         : {
             members: {

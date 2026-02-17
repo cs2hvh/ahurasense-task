@@ -45,6 +45,7 @@ export default async function WorkspaceMembersPage({
   const currentMembership = workspace.members.find((member) => member.userId === session.user.id);
   const isGlobalAdmin = session.user.role === "admin";
   const canManage = isGlobalAdmin || currentMembership?.role === "owner" || currentMembership?.role === "admin";
+  const canAssignAdmin = currentMembership?.role === "owner";
 
   return (
     <main className="space-y-4 p-6">
@@ -57,6 +58,7 @@ export default async function WorkspaceMembersPage({
         workspaceId={workspace.id}
         currentUserId={session.user.id}
         canManage={canManage}
+        canAssignAdmin={Boolean(canAssignAdmin)}
         initialMembers={workspace.members.map((member) => ({
           userId: member.user.id,
           name: `${member.user.firstName} ${member.user.lastName}`,

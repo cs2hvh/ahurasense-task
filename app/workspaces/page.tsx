@@ -16,7 +16,6 @@ export default async function WorkspacesPage() {
   }
 
   const canCreateWorkspace = canCreateWorkspaceWithRole(session.user.role);
-  const canViewAllWorkspaceProjects = canBypassProjectMembership(session.user.role);
 
   const memberships = await prisma.workspaceMember.findMany({
     where: {
@@ -26,8 +25,12 @@ export default async function WorkspacesPage() {
       workspace: {
         include: {
           projects: {
-            where: canViewAllWorkspaceProjects ? undefined : { members: { some: { userId: session.user.id } } },
             orderBy: { createdAt: "asc" },
+            include: {
+              members: {
+                select: { userId: true },
+              },
+            },
           },
           _count: {
             select: {
@@ -42,7 +45,21 @@ export default async function WorkspacesPage() {
     },
   });
 
-  const totalProjects = memberships.reduce((sum, membership) => sum + membership.workspace.projects.length, 0);
+  const membershipCards = memberships.map((membership) => {
+    const canViewAllWorkspaceProjects = canBypassProjectMembership(session.user.role, membership.role);
+    const visibleProjectCount = canViewAllWorkspaceProjects
+      ? membership.workspace.projects.length
+      : membership.workspace.projects.filter((project) =>
+          project.members.some((member) => member.userId === session.user.id),
+        ).length;
+
+    return {
+      ...membership,
+      visibleProjectCount,
+    };
+  });
+
+  const totalProjects = membershipCards.reduce((sum, membership) => sum + membership.visibleProjectCount, 0);
   const totalMembers = memberships.reduce((sum, membership) => sum + membership.workspace._count.members, 0);
   const activeRole = memberships.find((membership) => membership.role === "owner" || membership.role === "admin");
 
@@ -53,7 +70,7 @@ export default async function WorkspacesPage() {
           <div>
             <h1 className="text-[24px] font-bold tracking-[-0.01em] text-[var(--color-text-primary)]">Workspaces</h1>
             <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-              Select a workspace and open only projects you are invited to.
+              Select a workspace and open your projects. Workspace owners/admins can access all projects.
             </p>
           </div>
           {canCreateWorkspace ? (
@@ -90,7 +107,7 @@ export default async function WorkspacesPage() {
 
       <div className={canCreateWorkspace ? "grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]" : "grid gap-4"}>
         <section className="grid gap-4 md:grid-cols-2">
-          {memberships.map(({ workspace, role }) => (
+          {membershipCards.map(({ workspace, role, visibleProjectCount }) => (
             <Card key={workspace.id} className="p-4">
               <div className="mb-2 flex items-center justify-between">
                 <Badge className="normal-case" variant={role === "owner" || role === "admin" ? "info" : "default"}>
@@ -103,7 +120,7 @@ export default async function WorkspacesPage() {
                 {workspace.description || "No description"}
               </p>
               <div className="mb-4 text-xs text-[var(--color-text-tertiary)]">
-                {workspace.projects.length} projects · Updated {new Date(workspace.updatedAt).toLocaleDateString()}
+                {visibleProjectCount} projects · Updated {new Date(workspace.updatedAt).toLocaleDateString()}
               </div>
               <Link
                 className="inline-flex h-9 items-center border border-[var(--color-accent-primary)] bg-[var(--color-accent-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--color-accent-hover)]"
@@ -114,7 +131,7 @@ export default async function WorkspacesPage() {
             </Card>
           ))}
 
-          {!memberships.length ? (
+          {!membershipCards.length ? (
             <Card className="border-dashed p-6 text-sm text-[var(--color-text-secondary)]">
               No workspaces yet. Create your first workspace using the panel on the right.
             </Card>
@@ -130,6 +147,4 @@ export default async function WorkspacesPage() {
     </main>
   );
 }
-
-
 

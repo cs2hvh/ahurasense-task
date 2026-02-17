@@ -25,6 +25,7 @@ interface WorkspaceMembersManagerProps {
   workspaceId: string;
   currentUserId: string;
   canManage: boolean;
+  canAssignAdmin: boolean;
   initialMembers: WorkspaceMemberItem[];
 }
 
@@ -76,6 +77,7 @@ export function WorkspaceMembersManager({
   workspaceId,
   currentUserId,
   canManage,
+  canAssignAdmin,
   initialMembers,
 }: WorkspaceMembersManagerProps) {
   const [members, setMembers] = useState(initialMembers);
@@ -86,6 +88,10 @@ export function WorkspaceMembersManager({
   const [lastName, setLastName] = useState("");
   const [generatedCredentials, setGeneratedCredentials] = useState<{ email: string; password: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const assignableRoles = useMemo(
+    () => (canAssignAdmin ? manageableRoles : manageableRoles.filter((option) => option.value !== "admin")),
+    [canAssignAdmin],
+  );
 
   const sortedMembers = useMemo(
     () =>
@@ -215,6 +221,9 @@ export function WorkspaceMembersManager({
         <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
           Add workspace users by email and manage access roles.
         </p>
+        <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
+          Only workspace owner can grant or revoke <span className="uppercase">admin</span> role.
+        </p>
 
         <form className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,1fr)_150px_auto]" onSubmit={addMember}>
           <Input
@@ -230,7 +239,7 @@ export function WorkspaceMembersManager({
             disabled={!canManage || saving}
             className="h-10 border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 text-sm"
           >
-            {manageableRoles.map((option) => (
+            {assignableRoles.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -322,23 +331,38 @@ export function WorkspaceMembersManager({
                   {isOwner ? (
                     <span className="text-xs uppercase tracking-wide text-[var(--color-text-secondary)]">Owner</span>
                   ) : (
-                    <select
-                      value={member.workspaceRole}
-                      onChange={(event) =>
-                        updateRole(
-                          member.userId,
-                          event.target.value as (typeof manageableRoles)[number]["value"],
-                        )
+                    (() => {
+                      const isAdminMember = member.workspaceRole === "admin";
+                      const canEditRole = canManage && (canAssignAdmin || !isAdminMember);
+
+                      if (!canEditRole) {
+                        return (
+                          <span className="text-xs uppercase tracking-wide text-[var(--color-text-secondary)]">
+                            {member.workspaceRole}
+                          </span>
+                        );
                       }
-                      disabled={!canManage}
-                      className="h-8 w-full border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-2 text-xs"
-                    >
-                      {manageableRoles.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
+
+                      return (
+                        <select
+                          value={member.workspaceRole}
+                          onChange={(event) =>
+                            updateRole(
+                              member.userId,
+                              event.target.value as (typeof manageableRoles)[number]["value"],
+                            )
+                          }
+                          disabled={!canManage}
+                          className="h-8 w-full border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-2 text-xs"
+                        >
+                          {assignableRoles.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      );
+                    })()
                   )}
                 </div>
 
@@ -346,7 +370,7 @@ export function WorkspaceMembersManager({
                 <div className="text-[var(--color-text-secondary)]">{member.status}</div>
 
                 <div>
-                  {!isOwner && canManage ? (
+                  {!isOwner && canManage && (canAssignAdmin || member.workspaceRole !== "admin") ? (
                     <button
                       onClick={() => removeMember(member.userId)}
                       className="text-xs text-[var(--color-error)] hover:underline"

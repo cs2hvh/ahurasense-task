@@ -10,7 +10,7 @@ import { addWorkspaceMemberSchema } from "@/lib/validations/membership";
 async function getWorkspaceAccess(workspaceId: string, userId: string, globalRole?: string) {
   const workspace = await prisma.workspace.findUnique({
     where: { id: workspaceId },
-    select: { id: true },
+    select: { id: true, ownerId: true },
   });
 
   if (!workspace) {
@@ -25,8 +25,9 @@ async function getWorkspaceAccess(workspaceId: string, userId: string, globalRol
   const isGlobalAdmin = globalRole === "admin";
   const canView = isGlobalAdmin || Boolean(membership);
   const canManage = isGlobalAdmin || membership?.role === "owner" || membership?.role === "admin";
+  const canAssignAdmin = membership?.role === "owner";
 
-  return { workspace, membership, canView, canManage };
+  return { workspace, membership, canView, canManage, canAssignAdmin };
 }
 
 function deriveNamesFromEmail(email: string) {
@@ -145,6 +146,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     if (existing?.role === "owner") {
       return fail("Workspace owner role cannot be modified", 400);
+    }
+
+    if (payload.role === "admin" && !access.canAssignAdmin) {
+      return fail("Only workspace owner can grant admin role", 403);
+    }
+
+    if (existing?.role === "admin" && !access.canAssignAdmin) {
+      return fail("Only workspace owner can modify admin members", 403);
     }
 
     const member = existing

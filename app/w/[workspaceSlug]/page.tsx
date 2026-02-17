@@ -11,7 +11,16 @@ export default async function WorkspaceDashboardPage({ params }: { params: Promi
   const session = await getAuthSession();
   const { workspaceSlug } = await params;
   const currentUserId = session?.user?.id ?? "";
-  const canViewAllWorkspaceProjects = canBypassProjectMembership(session?.user?.role);
+
+  const membership = await prisma.workspaceMember.findFirst({
+    where: {
+      workspace: { slug: workspaceSlug },
+      userId: currentUserId,
+    },
+    select: { role: true },
+  });
+
+  const canViewAllWorkspaceProjects = canBypassProjectMembership(session?.user?.role, membership?.role);
 
   const workspace = await prisma.workspace.findUnique({
     where: { slug: workspaceSlug },

@@ -82,9 +82,23 @@ export default async function IssueDetailPage({
     notFound();
   }
 
+  const workspaceMembership = session?.user?.id
+    ? await prisma.workspaceMember.findFirst({
+        where: {
+          workspaceId: issue.project.workspaceId,
+          userId: session.user.id,
+        },
+        select: { role: true },
+      })
+    : null;
+
+  const isWorkspaceOwner = workspaceMembership?.role === "owner";
   const canEdit = Boolean(
     session?.user?.id &&
-      (session.user.role === "admin" || issue.reporterId === session.user.id || issue.assigneeId === session.user.id),
+      (session.user.role === "admin" ||
+        isWorkspaceOwner ||
+        issue.reporterId === session.user.id ||
+        issue.assigneeId === session.user.id),
   );
 
   return (

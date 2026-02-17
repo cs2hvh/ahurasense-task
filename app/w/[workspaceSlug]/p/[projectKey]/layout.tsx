@@ -23,14 +23,42 @@ export default async function ProjectLayout({
       key: projectKey,
       workspace: { slug: workspaceSlug },
     },
-    select: { id: true },
+    select: { id: true, workspaceId: true },
   });
 
   if (!project) {
     redirect(`/w/${workspaceSlug}`);
   }
 
-  if (canBypassProjectMembership(session.user.role)) {
+  const workspaceMembership = await prisma.workspaceMember.findFirst({
+    where: {
+      workspaceId: project.workspaceId,
+      userId: session.user.id,
+    },
+    select: { role: true },
+  });
+
+  const canBypass = canBypassProjectMembership(session.user.role, workspaceMembership?.role);
+  const isWorkspaceAdmin = workspaceMembership?.role === "owner" || workspaceMembership?.role === "admin";
+
+  if (canBypass) {
+    if (isWorkspaceAdmin) {
+      await prisma.projectMember.upsert({
+        where: {
+          projectId_userId: {
+            projectId: project.id,
+            userId: session.user.id,
+          },
+        },
+        update: {},
+        create: {
+          projectId: project.id,
+          userId: session.user.id,
+          role: "viewer",
+        },
+      });
+    }
+
     return children;
   }
 
