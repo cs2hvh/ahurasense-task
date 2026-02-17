@@ -16,7 +16,7 @@ export const authOptions: NextAuthOptions = {
     maxAge: 60 * 60 * 24 * 7,
   },
   jwt: {
-    maxAge: 60 * 15,
+    maxAge: 60 * 60 * 24 * 7,
   },
   providers: [
     CredentialsProvider({
