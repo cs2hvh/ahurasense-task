@@ -1,0 +1,353 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  manager
+  developer
+  viewer
+}
+
+enum UserStatus {
+  active
+  inactive
+  suspended
+}
+
+enum WorkspaceMemberRole {
+  owner
+  admin
+  member
+  viewer
+}
+
+enum ProjectType {
+  software
+  business
+  service_desk
+}
+
+enum ProjectStatus {
+  active
+  archived
+  on_hold
+}
+
+enum ProjectMemberRole {
+  lead
+  developer
+  tester
+  viewer
+}
+
+enum SprintStatus {
+  planning
+  active
+  completed
+}
+
+enum IssueType {
+  story
+  task
+  bug
+  epic
+  subtask
+}
+
+enum IssuePriority {
+  lowest
+  low
+  medium
+  high
+  highest
+}
+
+enum IssueStatusCategory {
+  todo
+  in_progress
+  done
+}
+
+enum NotificationType {
+  assigned
+  mentioned
+  commented
+  status_changed
+  watching
+}
+
+model User {
+  id                   String            @id @default(uuid()) @db.VarChar(36)
+  email                String            @unique @db.VarChar(255)
+  passwordHash         String            @map("password_hash") @db.VarChar(255)
+  firstName            String            @map("first_name") @db.VarChar(100)
+  lastName             String            @map("last_name") @db.VarChar(100)
+  avatarUrl            String?           @map("avatar_url") @db.Text
+  role                 UserRole          @default(developer)
+  status               UserStatus        @default(active)
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedAt            DateTime          @updatedAt @map("updated_at")
+  ownedWorkspaces      Workspace[]       @relation("WorkspaceOwner")
+  workspaceMemberships WorkspaceMember[]
+  ledProjects          Project[]         @relation("ProjectLead")
+  projectMemberships   ProjectMember[]
+  assignedIssues       Issue[]           @relation("IssueAssignee")
+  reportedIssues       Issue[]           @relation("IssueReporter")
+  comments             IssueComment[]
+  attachments          IssueAttachment[]
+  historyEntries       IssueHistory[]
+  watchingIssues       IssueWatcher[]
+  notifications        Notification[]
+
+  @@map("users")
+}
+
+model Workspace {
+  id          String            @id @default(uuid()) @db.VarChar(36)
+  name        String            @db.VarChar(200)
+  slug        String            @unique @db.VarChar(200)
+  description String?           @db.Text
+  ownerId     String            @map("owner_id") @db.VarChar(36)
+  avatarUrl   String?           @map("avatar_url") @db.Text
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+  owner       User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  members     WorkspaceMember[]
+  projects    Project[]
+
+  @@index([ownerId])
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String              @id @default(uuid()) @db.VarChar(36)
+  workspaceId String              @map("workspace_id") @db.VarChar(36)
+  userId      String              @map("user_id") @db.VarChar(36)
+  role        WorkspaceMemberRole @default(member)
+  joinedAt    DateTime            @default(now()) @map("joined_at")
+  workspace   Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+  @@map("workspace_members")
+}
+
+model Project {
+  id            String           @id @default(uuid()) @db.VarChar(36)
+  workspaceId   String           @map("workspace_id") @db.VarChar(36)
+  key           String           @unique @db.VarChar(10)
+  name          String           @db.VarChar(200)
+  description   String?          @db.Text
+  leadId        String?          @map("lead_id") @db.VarChar(36)
+  type          ProjectType      @default(software)
+  status        ProjectStatus    @default(active)
+  startDate     DateTime?        @map("start_date") @db.Date
+  targetEndDate DateTime?        @map("target_end_date") @db.Date
+  avatarUrl     String?          @map("avatar_url") @db.Text
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+  workspace     Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  lead          User?            @relation("ProjectLead", fields: [leadId], references: [id], onDelete: SetNull)
+  members       ProjectMember[]
+  sprints       Sprint[]
+  issues        Issue[]
+  issueStatuses IssueStatus[]
+  labels        Label[]
+
+  @@index([workspaceId])
+  @@index([leadId])
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        String            @id @default(uuid()) @db.VarChar(36)
+  projectId String            @map("project_id") @db.VarChar(36)
+  userId    String            @map("user_id") @db.VarChar(36)
+  role      ProjectMemberRole @default(developer)
+  joinedAt  DateTime          @default(now()) @map("joined_at")
+  project   Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([userId])
+  @@map("project_members")
+}
+
+model Sprint {
+  id        String      @id @default(uuid()) @db.VarChar(36)
+  projectId String      @map("project_id") @db.VarChar(36)
+  name      String      @db.VarChar(200)
+  goal      String?     @db.Text
+  startDate DateTime    @map("start_date")
+  endDate   DateTime    @map("end_date")
+  status    SprintStatus @default(planning)
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issues    Issue[]
+
+  @@index([projectId, status])
+  @@map("sprints")
+}
+
+model IssueStatus {
+  id        String              @id @default(uuid()) @db.VarChar(36)
+  projectId String              @map("project_id") @db.VarChar(36)
+  name      String              @db.VarChar(50)
+  category  IssueStatusCategory
+  color     String?             @db.VarChar(7)
+  position  Int
+  createdAt DateTime            @default(now()) @map("created_at")
+  project   Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issues    Issue[]
+
+  @@unique([projectId, name])
+  @@index([projectId, position])
+  @@map("issue_statuses")
+}
+
+model Issue {
+  id            String          @id @default(uuid()) @db.VarChar(36)
+  projectId     String          @map("project_id") @db.VarChar(36)
+  issueNumber   Int             @map("issue_number")
+  key           String          @db.VarChar(20)
+  type          IssueType
+  parentId      String?         @map("parent_id") @db.VarChar(36)
+  epicId        String?         @map("epic_id") @db.VarChar(36)
+  sprintId      String?         @map("sprint_id") @db.VarChar(36)
+  title         String          @db.VarChar(300)
+  description   String?         @db.Text
+  statusId      String          @map("status") @db.VarChar(36)
+  priority      IssuePriority   @default(medium)
+  storyPoints   Int?            @map("story_points")
+  assigneeId    String?         @map("assignee_id") @db.VarChar(36)
+  reporterId    String          @map("reporter_id") @db.VarChar(36)
+  dueDate       DateTime?       @map("due_date") @db.Date
+  position      Int?
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+  project       Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent        Issue?          @relation("IssueParent", fields: [parentId], references: [id], onDelete: SetNull)
+  subtasks      Issue[]         @relation("IssueParent")
+  epic          Issue?          @relation("IssueEpic", fields: [epicId], references: [id], onDelete: SetNull)
+  epicChildren  Issue[]         @relation("IssueEpic")
+  sprint        Sprint?         @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  status        IssueStatus     @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  assignee      User?           @relation("IssueAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  reporter      User            @relation("IssueReporter", fields: [reporterId], references: [id], onDelete: Restrict)
+  comments      IssueComment[]
+  attachments   IssueAttachment[]
+  history       IssueHistory[]
+  labels        IssueLabel[]
+  watchers      IssueWatcher[]
+  notifications Notification[]
+
+  @@unique([projectId, issueNumber])
+  @@index([projectId, statusId, position])
+  @@index([sprintId])
+  @@index([assigneeId])
+  @@map("issues")
+}
+
+model IssueComment {
+  id        String   @id @default(uuid()) @db.VarChar(36)
+  issueId   String   @map("issue_id") @db.VarChar(36)
+  userId    String   @map("user_id") @db.VarChar(36)
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([issueId, createdAt])
+  @@map("issue_comments")
+}
+
+model IssueAttachment {
+  id        String   @id @default(uuid()) @db.VarChar(36)
+  issueId   String   @map("issue_id") @db.VarChar(36)
+  userId    String   @map("user_id") @db.VarChar(36)
+  filename  String   @db.VarChar(255)
+  fileUrl   String   @map("file_url") @db.Text
+  fileSize  BigInt?  @map("file_size")
+  mimeType  String?  @map("mime_type") @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([issueId])
+  @@map("issue_attachments")
+}
+
+model IssueHistory {
+  id        String   @id @default(uuid()) @db.VarChar(36)
+  issueId   String   @map("issue_id") @db.VarChar(36)
+  userId    String   @map("user_id") @db.VarChar(36)
+  fieldName String   @map("field_name") @db.VarChar(50)
+  oldValue  String?  @map("old_value") @db.Text
+  newValue  String?  @map("new_value") @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([issueId, createdAt])
+  @@map("issue_history")
+}
+
+model Label {
+  id        String      @id @default(uuid()) @db.VarChar(36)
+  projectId String      @map("project_id") @db.VarChar(36)
+  name      String      @db.VarChar(50)
+  color     String      @db.VarChar(7)
+  createdAt DateTime    @default(now()) @map("created_at")
+  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issues    IssueLabel[]
+
+  @@unique([projectId, name])
+  @@index([projectId])
+  @@map("labels")
+}
+
+model IssueLabel {
+  issueId String @map("issue_id") @db.VarChar(36)
+  labelId String @map("label_id") @db.VarChar(36)
+  issue   Issue  @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  label   Label  @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([issueId, labelId])
+  @@map("issue_labels")
+}
+
+model IssueWatcher {
+  issueId    String   @map("issue_id") @db.VarChar(36)
+  userId     String   @map("user_id") @db.VarChar(36)
+  createdAt  DateTime @default(now()) @map("created_at")
+  issue      Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([issueId, userId])
+  @@map("issue_watchers")
+}
+
+model Notification {
+  id        String           @id @default(uuid()) @db.VarChar(36)
+  userId    String           @map("user_id") @db.VarChar(36)
+  issueId   String?          @map("issue_id") @db.VarChar(36)
+  type      NotificationType
+  message   String           @db.Text
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at")
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  issue     Issue?           @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+  @@map("notifications")
+}
+
