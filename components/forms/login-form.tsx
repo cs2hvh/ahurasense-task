@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type LoginInput, loginSchema } from "@/lib/validations/auth";
 
-export function LoginForm() {
+export function LoginForm({ callbackUrl = "/workspaces" }: { callbackUrl?: string }) {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -30,6 +30,7 @@ export function LoginForm() {
     const result = await signIn("credentials", {
       email: values.email,
       password: values.password,
+      callbackUrl,
       redirect: false,
     });
 
@@ -38,7 +39,7 @@ export function LoginForm() {
       return;
     }
 
-    router.push("/workspaces");
+    router.replace(result?.url ?? callbackUrl);
     router.refresh();
   });
 

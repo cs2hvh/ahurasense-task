@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
+import { getAuthSecret, hasAuthSecret } from "@/lib/auth-env";
 import { AUTH_ROUTES, PROTECTED_ROUTE_PREFIXES, PUBLIC_FILE } from "@/lib/constants";
 
 export async function middleware(request: NextRequest) {
@@ -15,13 +16,23 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+  const secretConfigured = hasAuthSecret();
+  const authSecret = getAuthSecret();
+  const secureCookie = request.nextUrl.protocol === "https:" || process.env.VERCEL === "1";
+
+  const token = secretConfigured
+    ? await getToken({ req: request, secret: authSecret, secureCookie })
+    : null;
   const isAuthenticated = Boolean(token?.sub);
   const isAuthRoute = AUTH_ROUTES.some((route) => pathname.startsWith(route));
   const isProtectedRoute = PROTECTED_ROUTE_PREFIXES.some((route) => pathname.startsWith(route));
 
   if (isAuthRoute && isAuthenticated) {
     return NextResponse.redirect(new URL("/workspaces", request.url));
+  }
+
+  if (!secretConfigured) {
+    return NextResponse.next();
   }
 
   if (isProtectedRoute && !isAuthenticated) {

@@ -2,7 +2,10 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
 
+import { getAuthSecret } from "@/lib/auth-env";
 import { prisma } from "@/lib/prisma";
+
+const authSecret = getAuthSecret();
 
 export const authOptions: NextAuthOptions = {
   pages: {
@@ -77,7 +80,7 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: authSecret || undefined,
 };
 
 

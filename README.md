@@ -118,6 +118,9 @@ cp .env.example .env
 ```
 
 3. Set your MySQL connection in `.env` as `DATABASE_URL`.
+   For Vercel production, also set:
+   - `NEXTAUTH_URL` = your deployed HTTPS URL (for example `https://your-app.vercel.app`)
+   - `NEXTAUTH_SECRET` (or `AUTH_SECRET`) = a long random secret
 
 4. Configure DigitalOcean Spaces variables in `.env`:
 
