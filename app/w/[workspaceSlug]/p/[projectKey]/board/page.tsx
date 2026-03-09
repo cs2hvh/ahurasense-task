@@ -126,7 +126,7 @@ export default async function ProjectBoardPage({
   }));
 
   return (
-    <main className="h-[calc(100vh-56px)] overflow-hidden bg-[linear-gradient(180deg,#101114_0%,#0a0a0b_52%)] p-4">
+    <main className="flex h-[calc(100vh-56px)] flex-col overflow-hidden bg-[linear-gradient(180deg,#101114_0%,#0a0a0b_52%)] p-4">
       <header className="mb-2 flex items-center justify-between border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 shadow-[var(--shadow-sm)]">
         <div>
           <h1 className="text-[18px] font-semibold tracking-[-0.01em] text-[var(--color-text-primary)]">{project.name} Board</h1>

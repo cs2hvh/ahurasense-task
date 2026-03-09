@@ -39,7 +39,7 @@ export function BoardColumnView({
     <motion.section
       layout
       className={cn(
-        "flex max-h-[min(68vh,720px)] self-start flex-col border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-[var(--shadow-sm)]",
+        "flex h-full flex-col border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-[var(--shadow-sm)]",
         fitToContainer
           ? "min-w-[304px] max-w-[304px] lg:min-w-0 lg:max-w-none lg:flex-1"
           : "min-w-[304px] max-w-[304px]",
@@ -75,7 +75,7 @@ export function BoardColumnView({
       <div
         ref={setNodeRef}
         className={cn(
-          "flex-1 space-y-2 overflow-y-auto bg-[rgba(10,10,11,0.15)] p-3 transition-colors",
+          "min-h-0 flex-1 space-y-2 overflow-y-auto bg-[rgba(10,10,11,0.15)] p-3 transition-colors",
           isOver ? "bg-[rgba(0,102,255,0.05)] ring-1 ring-inset ring-[rgba(0,102,255,0.28)]" : "",
         )}
       >

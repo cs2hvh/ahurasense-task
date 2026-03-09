@@ -462,7 +462,7 @@ export function KanbanBoard({
   };
 
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="mb-2 space-y-1.5 px-4">
         <div className="flex items-center justify-between gap-3">
           <p className="text-[11px] text-[var(--color-text-secondary)]">
@@ -609,7 +609,7 @@ export function KanbanBoard({
       >
         <motion.div
           className={cn(
-            "flex gap-4 border-t border-[var(--color-border)] p-4",
+            "flex min-h-0 flex-1 gap-4 overflow-y-hidden border-t border-[var(--color-border)] p-4",
             fitColumnsInViewport
               ? "w-full overflow-x-auto lg:overflow-x-visible"
               : "w-max min-w-full overflow-x-auto",
@@ -689,7 +689,7 @@ export function KanbanBoard({
         }}
         loading={createStatus.isPending}
       />
-    </>
+    </div>
   );
 }
 
