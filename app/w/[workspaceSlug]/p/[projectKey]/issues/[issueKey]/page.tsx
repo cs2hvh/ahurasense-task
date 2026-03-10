@@ -93,12 +93,17 @@ export default async function IssueDetailPage({
     : null;
 
   const isWorkspaceOwner = workspaceMembership?.role === "owner";
+  const isWorkspaceAdmin = workspaceMembership?.role === "admin";
   const canEdit = Boolean(
     session?.user?.id &&
       (session.user.role === "admin" ||
         isWorkspaceOwner ||
         issue.reporterId === session.user.id ||
         issue.assigneeId === session.user.id),
+  );
+  const canDelete = Boolean(
+    session?.user?.id &&
+      (session.user.role === "admin" || isWorkspaceOwner || isWorkspaceAdmin),
   );
 
   return (
@@ -163,6 +168,8 @@ export default async function IssueDetailPage({
         <IssueEditForm
           issueId={issue.id}
           canEdit={canEdit}
+          canDelete={canDelete}
+          redirectOnDelete={`/w/${workspaceSlug}/p/${projectKey}/board`}
           initial={{
             title: issue.title,
             description: issue.description,

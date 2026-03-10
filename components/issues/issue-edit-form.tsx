@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 interface IssueEditFormProps {
   issueId: string;
   canEdit: boolean;
+  canDelete?: boolean;
+  redirectOnDelete?: string;
   initial: {
     title: string;
     description: string | null;
@@ -27,7 +29,7 @@ interface IssueEditFormProps {
   issues: Array<{ id: string; key: string; title: string; type: "story" | "task" | "bug" | "epic" | "subtask"; epicId: string | null }>;
 }
 
-export function IssueEditForm({ issueId, canEdit, initial, statuses, members, sprints, issues }: IssueEditFormProps) {
+export function IssueEditForm({ issueId, canEdit, canDelete = false, redirectOnDelete, initial, statuses, members, sprints, issues }: IssueEditFormProps) {
   const [title, setTitle] = useState(initial.title);
   const [description, setDescription] = useState(initial.description ?? "");
   const [type, setType] = useState(initial.type);
@@ -42,6 +44,29 @@ export function IssueEditForm({ issueId, canEdit, initial, statuses, members, sp
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    setDeleting(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/issues/${issueId}`, { method: "DELETE" });
+      const payload = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to delete issue");
+      }
+      if (redirectOnDelete) {
+        window.location.href = redirectOnDelete;
+      } else {
+        window.history.back();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete issue");
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  }
 
   const epicOptions = issues.filter((issue) => issue.type === "epic" && issue.id !== issueId);
   const parentOptions =
@@ -279,9 +304,47 @@ export function IssueEditForm({ issueId, canEdit, initial, statuses, members, sp
       {error ? <p className="text-xs text-[var(--color-error)]">{error}</p> : null}
       {success ? <p className="text-xs text-[var(--color-success)]">{success}</p> : null}
 
-      <Button type="submit" size="sm" disabled={!canEdit || saving}>
-        {saving ? "Saving..." : "Save Changes"}
-      </Button>
+      <div className="flex items-center justify-between gap-2">
+        <Button type="submit" size="sm" disabled={!canEdit || saving}>
+          {saving ? "Saving..." : "Save Changes"}
+        </Button>
+
+        {canDelete && !confirmDelete ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-[var(--color-error)] hover:text-[var(--color-error)]"
+            onClick={() => setConfirmDelete(true)}
+          >
+            Delete Issue
+          </Button>
+        ) : null}
+
+        {canDelete && confirmDelete ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-[var(--color-text-secondary)]">Are you sure?</span>
+            <Button
+              type="button"
+              size="sm"
+              className="border-[var(--color-error)] bg-[var(--color-error)] text-white hover:opacity-90"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Confirm Delete"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setConfirmDelete(false)}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+          </div>
+        ) : null}
+      </div>
     </form>
   );
 }

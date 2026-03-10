@@ -261,3 +261,44 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return handleRouteError(error);
   }
 }
+
+export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireUser();
+  if ("error" in auth) {
+    return auth.error;
+  }
+
+  try {
+    const { id } = await params;
+
+    const issue = await prisma.issue.findUnique({
+      where: { id },
+      include: { project: { select: { workspaceId: true } } },
+    });
+
+    if (!issue) {
+      return fail("Issue not found", 404);
+    }
+
+    const isGlobalAdmin = auth.session.user.role === "admin";
+    const workspaceMembership = await prisma.workspaceMember.findFirst({
+      where: {
+        workspaceId: issue.project.workspaceId,
+        userId: auth.session.user.id,
+      },
+      select: { role: true },
+    });
+    const isWorkspaceOwnerOrAdmin =
+      workspaceMembership?.role === "owner" || workspaceMembership?.role === "admin";
+
+    if (!isGlobalAdmin && !isWorkspaceOwnerOrAdmin) {
+      return fail("Only workspace owners, workspace admins, or global admins can delete issues", 403);
+    }
+
+    await prisma.issue.delete({ where: { id } });
+
+    return ok({ deleted: true });
+  } catch (error) {
+    return handleRouteError(error);
+  }
+}
