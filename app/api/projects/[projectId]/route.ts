@@ -89,3 +89,38 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return handleRouteError(error);
   }
 }
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ projectId: string }> },
+) {
+  const auth = await requireUser();
+  if ("error" in auth) return auth.error;
+
+  try {
+    const { projectId } = await params;
+
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { id: true, workspaceId: true, name: true },
+    });
+
+    if (!project) return fail("Project not found", 404);
+
+    // Only workspace owner can delete projects
+    const workspaceMember = await prisma.workspaceMember.findFirst({
+      where: { workspaceId: project.workspaceId, userId: auth.session.user.id },
+      select: { role: true },
+    });
+
+    if (workspaceMember?.role !== "owner") {
+      return fail("Only the workspace owner can delete projects", 403);
+    }
+
+    await prisma.project.delete({ where: { id: projectId } });
+
+    return ok({ deleted: true });
+  } catch (error) {
+    return handleRouteError(error);
+  }
+}

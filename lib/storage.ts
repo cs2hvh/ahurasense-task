@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const spacesEndpoint = process.env.SPACES_ENDPOINT;
@@ -119,6 +119,17 @@ export async function uploadObject({
   };
 }
 
+export async function getObject(key: string) {
+  const response = await getClient().send(
+    new GetObjectCommand({
+      Bucket: spacesBucket,
+      Key: key,
+    }),
+  );
+
+  return response;
+}
+
 export async function deleteObjectByKey(key: string) {
   await getClient().send(
     new DeleteObjectCommand({
@@ -133,17 +144,23 @@ export function buildObjectKey({
   userId,
   originalFileName,
   issueId,
+  projectId,
 }: {
-  scope: "avatar" | "attachment";
+  scope: "avatar" | "attachment" | "document";
   userId: string;
   originalFileName: string;
   issueId?: string;
+  projectId?: string;
 }) {
   const safeName = sanitizeName(originalFileName) || "file";
   const id = randomUUID();
 
   if (scope === "avatar") {
     return `avatars/${userId}/${id}-${safeName}`;
+  }
+
+  if (scope === "document") {
+    return `documents/${projectId ?? "misc"}/${userId}/${id}-${safeName}`;
   }
 
   return `attachments/${issueId ?? "misc"}/${userId}/${id}-${safeName}`;

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { IssueEditForm } from "@/components/issues/issue-edit-form";
 import { IssueAttachmentUpload } from "@/components/issues/issue-attachment-upload";
+import { IssueDocumentUpload } from "@/components/issues/issue-document-upload";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { UserInline } from "@/components/ui/user-inline";
@@ -122,19 +123,32 @@ export default async function IssueDetailPage({
           <p className="text-sm text-[var(--color-text-secondary)]">{issue.description || "No description"}</p>
         </Card>
 
+        {/* Documents - shown prominently on the task */}
+        <Card className="p-4">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">Documents</h2>
+          <IssueDocumentUpload issueId={issue.id} basePath={`/w/${workspaceSlug}/p/${projectKey}`} />
+        </Card>
+
         <Card className="p-4">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">Comments</h2>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {issue.comments.map((comment) => (
-              <div key={comment.id} className="border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-3">
-                <div className="mb-1">
+              <div key={comment.id} className="border border-[var(--color-border)] bg-[var(--color-bg-primary)]">
+                <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2">
                   <UserInline
                     name={`${comment.user.firstName} ${comment.user.lastName}`}
                     avatarUrl={comment.user.avatarUrl}
                     size="xs"
+                    textClassName="font-medium text-[var(--color-text-primary)]"
                   />
+                  <time className="text-xs text-[var(--color-text-tertiary)]" dateTime={comment.createdAt.toISOString()}>
+                    {new Date(comment.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </time>
                 </div>
-                <p className="text-sm text-[var(--color-text-primary)]">{comment.content}</p>
+                <div
+                  className="comment-rendered-content px-4 py-3 text-sm text-[var(--color-text-primary)]"
+                  dangerouslySetInnerHTML={{ __html: comment.content }}
+                />
               </div>
             ))}
 

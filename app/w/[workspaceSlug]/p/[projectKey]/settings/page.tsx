@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 
 import { ProjectGeneralSettingsForm } from "@/components/project/project-general-settings-form";
+import { DeleteProjectCard } from "@/components/project/delete-project-card";
 import { LabelsManager } from "@/components/project/labels-manager";
 import { Card } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
@@ -54,6 +55,8 @@ export default async function ProjectSettingsPage({
     workspaceMembership?.role === "admin" ||
     currentProjectMember?.role === "lead";
 
+  const isWorkspaceOwner = workspaceMembership?.role === "owner";
+
   return (
     <main className="space-y-4 p-6">
       <ProjectGeneralSettingsForm
@@ -92,6 +95,14 @@ export default async function ProjectSettingsPage({
           Manage Project Members
         </Link>
       </Card>
+
+      {isWorkspaceOwner && (
+        <DeleteProjectCard
+          projectId={project.id}
+          projectName={project.name}
+          workspaceSlug={workspaceSlug}
+        />
+      )}
     </main>
   );
 }

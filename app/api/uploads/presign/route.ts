@@ -43,11 +43,29 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (payload.scope === "document") {
+      if (!payload.projectId) {
+        return fail("projectId is required for document uploads", 400);
+      }
+
+      const projectMember = await prisma.projectMember.findFirst({
+        where: {
+          projectId: payload.projectId,
+          userId: auth.session.user.id,
+        },
+      });
+
+      if (!projectMember) {
+        return fail("Forbidden", 403);
+      }
+    }
+
     const key = buildObjectKey({
       scope: payload.scope,
       userId: auth.session.user.id,
       originalFileName: payload.fileName,
       issueId: payload.issueId,
+      projectId: payload.projectId,
     });
 
     const signed = await createUploadUrl({

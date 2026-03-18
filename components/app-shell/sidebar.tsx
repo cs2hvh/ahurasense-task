@@ -5,6 +5,7 @@ import {
   CalendarRange,
   ChevronLeft,
   ChevronRight,
+  FileText,
   FolderKanban,
   LayoutGrid,
   ListTodo,
@@ -24,6 +25,7 @@ const projectLinks = [
   { label: "Board", href: "/board", icon: FolderKanban },
   { label: "Backlog", href: "/backlog", icon: ListTodo },
   { label: "Issues", href: "/issues", icon: Ticket },
+  { label: "Documents", href: "/documents", icon: FileText },
   { label: "Members", href: "/members", icon: Users },
   { label: "Sprints", href: "/sprints", icon: CalendarRange },
   { label: "Settings", href: "/settings", icon: Settings },
@@ -54,25 +56,25 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "relative h-[calc(100vh-56px)] shrink-0 border-r border-[var(--color-border)] bg-[var(--color-bg-primary)] transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+        "relative h-full shrink-0 border-r border-[var(--color-border)] bg-[var(--color-bg-primary)] transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
         isSidebarCollapsed ? "w-[60px]" : "w-[240px]",
       )}
     >
       <button
         onClick={toggleSidebar}
-        className="absolute -right-3 top-3 z-10 inline-flex size-6 items-center justify-center border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+        className="absolute -right-3 top-3 z-10 inline-flex size-6 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
       >
         {isSidebarCollapsed ? <ChevronRight className="size-3" /> : <ChevronLeft className="size-3" />}
       </button>
 
-      <nav className="space-y-1 p-3">
+      <nav className="space-y-0.5 px-2 pt-2">
         {links.map((link) => {
           const Icon = link.icon;
           return (
             <Link
               key={link.label}
               href={basePath ? `${basePath}${link.href}` : link.href}
-              className="group flex h-10 items-center gap-2 border border-transparent px-2 text-sm text-[var(--color-text-secondary)] hover:border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-text-primary)]"
+              className="group flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-text-primary)]"
             >
               <Icon className="size-4 shrink-0" />
               {!isSidebarCollapsed && <span>{link.label}</span>}
