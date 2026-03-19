@@ -22,6 +22,7 @@ export default async function WorkspaceProjectsPage({
     select: { role: true },
   });
   const canViewAllWorkspaceProjects = canBypassProjectMembership(session?.user?.role, membership?.role);
+  const canCreateProject = membership?.role === "owner" || membership?.role === "admin";
 
   const workspace = await prisma.workspace.findUnique({
     where: { slug: workspaceSlug },
@@ -49,12 +50,14 @@ export default async function WorkspaceProjectsPage({
           <h1 className="text-[24px] font-bold tracking-[-0.01em] text-[var(--color-text-primary)]">Projects</h1>
           <p className="text-sm text-[var(--color-text-secondary)]">{workspace.name}</p>
         </div>
-        <Link
-          href={`/w/${workspace.slug}/projects/create`}
-          className="inline-flex h-9 items-center border border-[var(--color-accent-primary)] bg-[var(--color-accent-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--color-accent-hover)]"
-        >
-          Create Project
-        </Link>
+        {canCreateProject && (
+          <Link
+            href={`/w/${workspace.slug}/projects/create`}
+            className="inline-flex h-9 items-center border border-[var(--color-accent-primary)] bg-[var(--color-accent-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--color-accent-hover)]"
+          >
+            Create Project
+          </Link>
+        )}
       </header>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

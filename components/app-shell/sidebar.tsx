@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/ui-store";
@@ -34,8 +35,8 @@ const projectLinks = [
 const workspaceLinks = [
   { label: "Overview", href: "", icon: LayoutGrid },
   { label: "Projects", href: "/projects", icon: FolderKanban },
-  { label: "Members", href: "/members", icon: Users },
-  { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Members", href: "/members", icon: Users, adminOnly: true },
+  { label: "Settings", href: "/settings", icon: Settings, adminOnly: true },
 ];
 
 const globalLinks = [
@@ -48,10 +49,21 @@ const globalLinks = [
 export function Sidebar() {
   const { workspaceSlug, projectKey } = useParams<{ workspaceSlug?: string; projectKey?: string }>();
   const { isSidebarCollapsed, toggleSidebar } = useUIStore();
+  const [workspaceRole, setWorkspaceRole] = useState<string | null>(null);
 
   const hasWorkspaceContext = Boolean(workspaceSlug);
   const basePath = hasWorkspaceContext ? (projectKey ? `/w/${workspaceSlug}/p/${projectKey}` : `/w/${workspaceSlug}`) : "";
-  const links = hasWorkspaceContext ? (projectKey ? projectLinks : workspaceLinks) : globalLinks;
+  const allLinks = hasWorkspaceContext ? (projectKey ? projectLinks : workspaceLinks) : globalLinks;
+  const isWorkspaceAdmin = workspaceRole === "owner" || workspaceRole === "admin";
+  const links = allLinks.filter((link) => !("adminOnly" in link && link.adminOnly) || isWorkspaceAdmin);
+
+  useEffect(() => {
+    if (!workspaceSlug) { setWorkspaceRole(null); return; }
+    fetch(`/api/workspaces/by-slug/${workspaceSlug}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((payload) => { if (payload?.data?.membershipRole) setWorkspaceRole(payload.data.membershipRole); })
+      .catch(() => {});
+  }, [workspaceSlug]);
 
   return (
     <aside

@@ -55,8 +55,10 @@ export function CreateMenu() {
   const [storyPoints, setStoryPoints] = useState("");
   const [statusId, setStatusId] = useState("");
   const [sprintId, setSprintId] = useState("");
+  const [workspaceRole, setWorkspaceRole] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const canCreateWorkspace = canCreateWorkspaceWithRole(session?.user?.role);
+  const canCreateProject = workspaceRole === "owner" || workspaceRole === "admin";
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -79,7 +81,16 @@ export function CreateMenu() {
     setType("task");
     setPriority("medium");
     setStoryPoints("");
+    setWorkspaceRole(null);
   }, [projectKey, workspaceSlug]);
+
+  useEffect(() => {
+    if (!workspaceSlug) return;
+    fetch(`/api/workspaces/by-slug/${workspaceSlug}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((payload) => { if (payload?.data?.membershipRole) setWorkspaceRole(payload.data.membershipRole); })
+      .catch(() => {});
+  }, [workspaceSlug]);
 
   async function loadProjectMeta() {
     if (!workspaceSlug || !projectKey) {
@@ -216,9 +227,9 @@ export function CreateMenu() {
               </Link>
             ) : null}
 
-            {workspaceSlug ? (
+            {workspaceSlug && canCreateProject ? (
               <Link
-                href={`/w/${workspaceSlug}`}
+                href={`/w/${workspaceSlug}/projects/create`}
                 onClick={() => setIsMenuOpen(false)}
                 className="flex items-center border border-transparent px-2 py-2 text-sm text-[var(--color-text-secondary)] hover:border-[var(--color-border)] hover:bg-[var(--color-bg-primary)] hover:text-[var(--color-text-primary)]"
               >

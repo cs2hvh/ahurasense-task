@@ -21,6 +21,7 @@ export default async function WorkspaceDashboardPage({ params }: { params: Promi
   });
 
   const canViewAllWorkspaceProjects = canBypassProjectMembership(session?.user?.role, membership?.role);
+  const canCreateProject = membership?.role === "owner" || membership?.role === "admin";
 
   const workspace = await prisma.workspace.findUnique({
     where: { slug: workspaceSlug },
@@ -48,19 +49,25 @@ export default async function WorkspaceDashboardPage({ params }: { params: Promi
           <Link href={`/w/${workspace.slug}/projects`} className="inline-flex h-9 items-center border border-[var(--color-border)] px-3 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]">
             Projects
           </Link>
-          <Link href={`/w/${workspace.slug}/projects/create`} className="inline-flex h-9 items-center border border-[var(--color-border)] px-3 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]">
-            Create Project
-          </Link>
-          <Link href={`/w/${workspace.slug}/settings`} className="inline-flex h-9 items-center border border-[var(--color-border)] px-3 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]">
-            Workspace Settings
-          </Link>
-          <Link href={`/w/${workspace.slug}/members`} className="inline-flex h-9 items-center border border-[var(--color-border)] px-3 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]">
-            Members
-          </Link>
+          {canCreateProject && (
+            <Link href={`/w/${workspace.slug}/projects/create`} className="inline-flex h-9 items-center border border-[var(--color-border)] px-3 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]">
+              Create Project
+            </Link>
+          )}
+          {canCreateProject && (
+            <Link href={`/w/${workspace.slug}/settings`} className="inline-flex h-9 items-center border border-[var(--color-border)] px-3 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]">
+              Workspace Settings
+            </Link>
+          )}
+          {canCreateProject && (
+            <Link href={`/w/${workspace.slug}/members`} className="inline-flex h-9 items-center border border-[var(--color-border)] px-3 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]">
+              Members
+            </Link>
+          )}
         </div>
       </header>
 
-      <ProjectCreateForm workspaceId={workspace.id} />
+      {canCreateProject && <ProjectCreateForm workspaceId={workspace.id} />}
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {workspace.projects.map((project) => (

@@ -67,6 +67,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return fail("Forbidden", 403);
     }
 
+    if (membership.role !== "owner" && membership.role !== "admin") {
+      return fail("Only workspace owners and admins can create projects", 403);
+    }
+
     const existing = await prisma.project.findUnique({
       where: { key: payload.key },
       select: { id: true },

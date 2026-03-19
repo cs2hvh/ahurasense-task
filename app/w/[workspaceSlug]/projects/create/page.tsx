@@ -1,15 +1,17 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { ProjectCreateForm } from "@/components/forms/project-create-form";
 import { Card } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
+import { getAuthSession } from "@/lib/session";
 
 export default async function WorkspaceProjectCreatePage({
   params,
 }: {
   params: Promise<{ workspaceSlug: string }>;
 }) {
+  const session = await getAuthSession();
   const { workspaceSlug } = await params;
 
   const workspace = await prisma.workspace.findUnique({
@@ -23,6 +25,15 @@ export default async function WorkspaceProjectCreatePage({
 
   if (!workspace) {
     notFound();
+  }
+
+  const membership = await prisma.workspaceMember.findFirst({
+    where: { workspaceId: workspace.id, userId: session?.user?.id ?? "" },
+    select: { role: true },
+  });
+
+  if (membership?.role !== "owner" && membership?.role !== "admin") {
+    redirect(`/w/${workspaceSlug}/projects`);
   }
 
   return (

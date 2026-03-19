@@ -36,8 +36,17 @@ export async function GET(
       });
     }
 
+    const userId = auth.session.user.id;
+
     const folders = await prisma.documentFolder.findMany({
-      where: { projectId },
+      where: {
+        projectId,
+        OR: [
+          { isPublic: true },
+          { createdById: userId },
+          { documents: { some: { accessList: { some: { userId } } } } },
+        ],
+      },
       orderBy: { name: "asc" },
       select: {
         id: true,
@@ -46,7 +55,20 @@ export async function GET(
         isPublic: true,
         createdAt: true,
         updatedAt: true,
-        _count: { select: { documents: true, children: true } },
+        _count: {
+          select: {
+            documents: {
+              where: {
+                OR: [
+                  { createdById: userId },
+                  { accessList: { some: { userId } } },
+                  { folder: { isPublic: true } },
+                ],
+              },
+            },
+            children: true,
+          },
+        },
         createdBy: {
           select: { id: true, firstName: true, lastName: true },
         },

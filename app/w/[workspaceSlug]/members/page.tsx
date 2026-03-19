@@ -47,6 +47,10 @@ export default async function WorkspaceMembersPage({
   const canManage = isGlobalAdmin || currentMembership?.role === "owner" || currentMembership?.role === "admin";
   const canAssignAdmin = currentMembership?.role === "owner";
 
+  if (!canManage) {
+    redirect(`/w/${workspaceSlug}`);
+  }
+
   return (
     <main className="space-y-4 p-6">
       <header>
