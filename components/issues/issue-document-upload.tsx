@@ -103,7 +103,7 @@ export function IssueDocumentUpload({
         <input
           ref={fileInputRef}
           type="file"
-          accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          accept=".doc,.docx,.ppt,.pptx,.xls,.xlsx,.pdf,.txt,.md,.csv,.html,.css,.js,.json,.xml"
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
@@ -119,7 +119,7 @@ export function IssueDocumentUpload({
           className="text-xs"
         >
           {uploading ? <Loader2 className="mr-1 size-3 animate-spin" /> : <Plus className="mr-1 size-3" />}
-          {uploading ? "Uploading..." : "Upload Doc"}
+          {uploading ? "Uploading..." : "Upload File"}
         </Button>
       </div>
 

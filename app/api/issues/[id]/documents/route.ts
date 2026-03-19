@@ -86,8 +86,8 @@ export async function POST(
       return fail("File is required", 400);
     }
 
-    const fileName = (file as File).name || "document.docx";
-    const contentType = file.type || "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    const fileName = (file as File).name || "document";
+    const contentType = file.type || "application/octet-stream";
     const fileSize = file.size;
 
     validateDocumentUpload(contentType, fileSize);
@@ -103,7 +103,7 @@ export async function POST(
     await uploadObject({ key, contentType, body: buffer });
 
     const fileUrl = getPublicObjectUrl(key);
-    const title = fileName.replace(/\.(docx?|doc)$/i, "");
+    const title = fileName.replace(/\.[^.]+$/, "");
 
     const document = await prisma.document.create({
       data: {

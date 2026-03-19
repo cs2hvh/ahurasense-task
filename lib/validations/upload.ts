@@ -5,12 +5,22 @@ const FILE_MIME_TYPES = [
   ...IMAGE_MIME_TYPES,
   "application/pdf",
   "text/plain",
+  "text/markdown",
+  "text/csv",
+  "text/html",
+  "text/css",
+  "text/javascript",
+  "application/json",
+  "application/xml",
+  "text/xml",
   "application/zip",
   "application/x-zip-compressed",
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 ];
 
 const DOCUMENT_MIME_TYPES = [

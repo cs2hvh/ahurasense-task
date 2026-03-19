@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
 
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -49,6 +48,7 @@ export function CreateIssueDialog({
   const [parentId, setParentId] = useState("");
   const [epicId, setEpicId] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const isDirty = Boolean(
     title.trim() || storyPoints || assigneeId || sprintId || parentId || epicId || type !== "task" || priority !== "medium",
   );
@@ -79,16 +79,7 @@ export function CreateIssueDialog({
     }
 
     if (isDirty) {
-      toast.warning("Unsaved issue details", {
-        description: "Click Discard to close and lose entered data.",
-        action: {
-          label: "Discard",
-          onClick: () => {
-            resetForm();
-            onOpenChange(false);
-          },
-        },
-      });
+      setShowDiscardConfirm(true);
       return;
     }
 
@@ -271,6 +262,33 @@ export function CreateIssueDialog({
           </Button>
         </div>
       </form>
+
+      {showDiscardConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60">
+          <div className="w-[min(400px,90vw)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-5 shadow-[var(--shadow-lg)]">
+            <h3 className="text-base font-bold text-[var(--color-text-primary)]">Discard changes?</h3>
+            <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+              You have unsaved issue details. This action cannot be undone.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setShowDiscardConfirm(false)}>
+                Keep Editing
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setShowDiscardConfirm(false);
+                  resetForm();
+                  onOpenChange(false);
+                }}
+                className="border-[var(--color-error)] bg-[var(--color-error)] text-white hover:opacity-90"
+              >
+                Discard
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Modal>
   );
 }
