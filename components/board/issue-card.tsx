@@ -88,7 +88,7 @@ export function IssueCard({ issue, dragOverlay = false, issueHref }: IssueCardPr
           {issue.priority}
         </Badge>
         <div className="flex items-center gap-2">
-          <UserInline name={issue.assigneeName} avatarUrl={issue.assigneeAvatarUrl} fallbackLabel="Unassigned" size="xs" />
+          <UserInline name={issue.assigneeName} avatarUrl={issue.assigneeAvatarUrl} userId={issue.assigneeId} fallbackLabel="Unassigned" size="xs" />
           {issueHref ? (
             <Link href={issueHref} className="font-semibold text-[var(--color-accent-primary)] hover:text-[var(--color-accent-hover)]">
               Open

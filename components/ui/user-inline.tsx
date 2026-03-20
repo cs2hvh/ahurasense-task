@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
+
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface UserInlineProps {
   name?: string | null;
   avatarUrl?: string | null;
+  userId?: string | null;
   fallbackLabel?: string;
   size?: "xs" | "sm" | "md";
   className?: string;
@@ -38,6 +41,7 @@ function getInitials(name: string) {
 export function UserInline({
   name,
   avatarUrl,
+  userId,
   fallbackLabel = "Unassigned",
   size = "sm",
   className,
@@ -47,7 +51,7 @@ export function UserInline({
     return <span className={cn("text-xs text-[var(--color-text-secondary)]", textClassName)}>{fallbackLabel}</span>;
   }
 
-  return (
+  const content = (
     <span className={cn("inline-flex min-w-0 items-center gap-1.5", className)}>
       <Avatar className={cn("border-[var(--color-border)]", SIZE_CLASSES[size])}>
         <AvatarImage src={avatarUrl ?? undefined} alt={name} />
@@ -56,4 +60,14 @@ export function UserInline({
       <span className={cn("truncate text-xs text-[var(--color-text-secondary)]", textClassName)}>{name}</span>
     </span>
   );
+
+  if (userId) {
+    return (
+      <Link href={`/profile/${userId}`} className="hover:opacity-80 transition-opacity">
+        {content}
+      </Link>
+    );
+  }
+
+  return content;
 }

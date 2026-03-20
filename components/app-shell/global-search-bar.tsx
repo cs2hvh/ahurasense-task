@@ -270,7 +270,7 @@ export function GlobalSearchBar() {
                   <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-tertiary)]">Users</p>
                   <div className="space-y-1">
                     {users.map((user) => (
-                      <div key={user.id} className="flex items-center gap-2 border border-transparent px-2 py-1.5 text-sm text-[var(--color-text-secondary)]">
+                      <Link key={user.id} href={`/profile/${user.id}`} onClick={() => setOpen(false)} className="flex items-center gap-2 rounded border border-transparent px-2 py-1.5 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]">
                         <UserRound className="size-3.5 text-[var(--color-success)]" />
                         <UserInline
                           name={`${user.firstName} ${user.lastName}`}
@@ -279,7 +279,7 @@ export function GlobalSearchBar() {
                           textClassName="text-[var(--color-text-primary)]"
                         />
                         <span className="ml-auto text-xs text-[var(--color-text-tertiary)]">{shorten(user.email, 28)}</span>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 </section>

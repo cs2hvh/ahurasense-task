@@ -74,6 +74,10 @@ export default async function ProjectMembersPage({
   const isWorkspaceAdmin = currentWorkspaceMember?.role === "owner" || currentWorkspaceMember?.role === "admin";
   const canManage = isGlobalAdmin || isWorkspaceAdmin || currentProjectMember?.role === "lead";
 
+  if (!canManage) {
+    redirect(`/w/${workspaceSlug}/p/${projectKey}`);
+  }
+
   return (
     <main className="space-y-4 p-6">
       <header className="flex flex-wrap items-start justify-between gap-3">

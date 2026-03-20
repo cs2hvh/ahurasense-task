@@ -5,69 +5,106 @@ import { fail, handleRouteError, ok } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { updateProfileSchema } from "@/lib/validations/user";
 
-export async function GET() {
-  const auth = await requireUser();
-  if ("error" in auth) {
-    return auth.error;
-  }
+// Public fields visible to any authenticated user
+const PUBLIC_PROFILE_SELECT = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  avatarUrl: true,
+  role: true,
+  status: true,
+  employeeId: true,
+  designation: true,
+  department: true,
+  employmentType: true,
+  dateOfJoining: true,
+  workLocation: true,
+  linkedinUrl: true,
+  bio: true,
+  reportingManager: {
+    select: { id: true, firstName: true, lastName: true, avatarUrl: true },
+  },
+} as const;
 
-  // Check if user is a workspace owner
+// Full fields visible to admin/owner (everything except bank)
+const PRIVILEGED_PROFILE_SELECT = {
+  ...PUBLIC_PROFILE_SELECT,
+  email: true,
+  createdAt: true,
+  phone: true,
+  dateOfBirth: true,
+  gender: true,
+  bloodGroup: true,
+  maritalStatus: true,
+  nationality: true,
+  address: true,
+  city: true,
+  state: true,
+  country: true,
+  zipCode: true,
+  reportingManagerId: true,
+  emergencyContactName: true,
+  emergencyContactRelation: true,
+  emergencyContactPhone: true,
+  bankName: true,
+  bankAccountNumber: true,
+  bankRoutingCode: true,
+  bankHolderName: true,
+} as const;
+
+async function getCallerPrivilege(callerId: string) {
+  const caller = await prisma.user.findUnique({
+    where: { id: callerId },
+    select: { role: true },
+  });
+  if (caller?.role === "admin") return "privileged" as const;
+
   const ownerMembership = await prisma.workspaceMember.findFirst({
-    where: { userId: auth.session.user.id, role: "owner" },
+    where: { userId: callerId, role: "owner" },
     select: { userId: true },
   });
+  if (ownerMembership) return "privileged" as const;
 
-  const user = await prisma.user.findUnique({
-    where: { id: auth.session.user.id },
-    select: {
-      id: true,
-      email: true,
-      firstName: true,
-      lastName: true,
-      avatarUrl: true,
-      role: true,
-      status: true,
-      createdAt: true,
-      phone: true,
-      dateOfBirth: true,
-      gender: true,
-      bloodGroup: true,
-      maritalStatus: true,
-      nationality: true,
-      address: true,
-      city: true,
-      state: true,
-      country: true,
-      zipCode: true,
-      employeeId: true,
-      designation: true,
-      department: true,
-      employmentType: true,
-      dateOfJoining: true,
-      reportingManagerId: true,
-      workLocation: true,
-      linkedinUrl: true,
-      bio: true,
-      bankName: true,
-      bankAccountNumber: true,
-      bankRoutingCode: true,
-      bankHolderName: true,
-      emergencyContactName: true,
-      emergencyContactRelation: true,
-      emergencyContactPhone: true,
-      reportingManager: {
-        select: { id: true, firstName: true, lastName: true, avatarUrl: true },
-      },
-    },
-  });
-
-  return ok({ ...user, isWorkspaceOwner: !!ownerMembership });
+  return "regular" as const;
 }
 
-export async function PATCH(request: NextRequest) {
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ userId: string }> },
+) {
   const auth = await requireUser();
-  if ("error" in auth) {
-    return auth.error;
+  if ("error" in auth) return auth.error;
+
+  const { userId } = await params;
+  const privilege = await getCallerPrivilege(auth.session.user.id);
+
+  const selectFields = privilege === "privileged"
+    ? PRIVILEGED_PROFILE_SELECT
+    : PUBLIC_PROFILE_SELECT;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: selectFields,
+  });
+
+  if (!user) {
+    return fail("User not found", 404);
+  }
+
+  return ok({ ...user, _accessLevel: privilege });
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ userId: string }> },
+) {
+  const auth = await requireUser();
+  if ("error" in auth) return auth.error;
+
+  const { userId } = await params;
+  const privilege = await getCallerPrivilege(auth.session.user.id);
+  if (privilege !== "privileged") {
+    return fail("Forbidden", 403);
   }
 
   try {
@@ -78,7 +115,7 @@ export async function PATCH(request: NextRequest) {
       const existing = await prisma.user.findFirst({
         where: {
           email: normalizedEmail,
-          id: { not: auth.session.user.id },
+          id: { not: userId },
         },
         select: { id: true },
       });
@@ -87,35 +124,16 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    // Determine caller privilege: system admin OR workspace owner
-    const currentUser = await prisma.user.findUnique({
-      where: { id: auth.session.user.id },
-      select: { role: true },
+    const target = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
     });
-    const isWorkspaceOwner = await prisma.workspaceMember.findFirst({
-      where: { userId: auth.session.user.id, role: "owner" },
-      select: { userId: true },
-    });
-    const isPrivileged = currentUser?.role === "admin" || !!isWorkspaceOwner;
-
-    // Fields that only admin/owner can modify
-    const PRIVILEGED_FIELDS = [
-      "firstName", "lastName", "email",
-      "phone", "dateOfBirth", "gender", "bloodGroup", "maritalStatus",
-      "nationality", "address", "city", "state", "country", "zipCode",
-      "employeeId", "designation", "department", "employmentType",
-      "dateOfJoining", "reportingManagerId", "workLocation",
-    ] as const;
-
-    // Non-privileged users can only update: emergency contact, bank, bio, linkedin, password
-    if (!isPrivileged) {
-      for (const field of PRIVILEGED_FIELDS) {
-        delete (payload as Record<string, unknown>)[field];
-      }
+    if (!target) {
+      return fail("User not found", 404);
     }
 
     const updated = await prisma.user.update({
-      where: { id: auth.session.user.id },
+      where: { id: userId },
       data: {
         ...(payload.firstName !== undefined ? { firstName: payload.firstName } : {}),
         ...(payload.lastName !== undefined ? { lastName: payload.lastName } : {}),
@@ -148,46 +166,7 @@ export async function PATCH(request: NextRequest) {
         ...(payload.emergencyContactRelation !== undefined ? { emergencyContactRelation: payload.emergencyContactRelation } : {}),
         ...(payload.emergencyContactPhone !== undefined ? { emergencyContactPhone: payload.emergencyContactPhone } : {}),
       },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        avatarUrl: true,
-        role: true,
-        status: true,
-        createdAt: true,
-        phone: true,
-        dateOfBirth: true,
-        gender: true,
-        bloodGroup: true,
-        maritalStatus: true,
-        nationality: true,
-        address: true,
-        city: true,
-        state: true,
-        country: true,
-        zipCode: true,
-        employeeId: true,
-        designation: true,
-        department: true,
-        employmentType: true,
-        dateOfJoining: true,
-        reportingManagerId: true,
-        workLocation: true,
-        linkedinUrl: true,
-        bio: true,
-        bankName: true,
-        bankAccountNumber: true,
-        bankRoutingCode: true,
-        bankHolderName: true,
-        emergencyContactName: true,
-        emergencyContactRelation: true,
-        emergencyContactPhone: true,
-        reportingManager: {
-          select: { id: true, firstName: true, lastName: true, avatarUrl: true },
-        },
-      },
+      select: PRIVILEGED_PROFILE_SELECT,
     });
 
     return ok(updated);
@@ -195,5 +174,3 @@ export async function PATCH(request: NextRequest) {
     return handleRouteError(error);
   }
 }
-
-

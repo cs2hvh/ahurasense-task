@@ -87,6 +87,29 @@ enum DocumentAccessLevel {
   editor
 }
 
+enum EmploymentType {
+  full_time
+  part_time
+  contract
+  intern
+  freelance
+}
+
+enum Gender {
+  male
+  female
+  other
+  prefer_not_to_say
+}
+
+enum MaritalStatus {
+  single
+  married
+  divorced
+  widowed
+  prefer_not_to_say
+}
+
 model User {
   id                   String            @id @default(uuid()) @db.VarChar(36)
   email                String            @unique @db.VarChar(255)
@@ -98,6 +121,45 @@ model User {
   status               UserStatus        @default(active)
   createdAt            DateTime          @default(now()) @map("created_at")
   updatedAt            DateTime          @updatedAt @map("updated_at")
+
+  // Personal Information
+  phone                String?           @db.VarChar(20)
+  dateOfBirth          DateTime?         @map("date_of_birth") @db.Date
+  gender               Gender?
+  bloodGroup           String?           @map("blood_group") @db.VarChar(5)
+  maritalStatus        MaritalStatus?    @map("marital_status")
+  nationality          String?           @db.VarChar(60)
+  address              String?           @db.Text
+  city                 String?           @db.VarChar(100)
+  state                String?           @db.VarChar(100)
+  country              String?           @db.VarChar(100)
+  zipCode              String?           @map("zip_code") @db.VarChar(20)
+
+  // Employment Details
+  employeeId           String?           @unique @map("employee_id") @db.VarChar(30)
+  designation          String?           @db.VarChar(150)
+  department           String?           @db.VarChar(100)
+  employmentType       EmploymentType?   @map("employment_type")
+  dateOfJoining        DateTime?         @map("date_of_joining") @db.Date
+  reportingManagerId   String?           @map("reporting_manager_id") @db.VarChar(36)
+  workLocation         String?           @map("work_location") @db.VarChar(150)
+  linkedinUrl          String?           @map("linkedin_url") @db.VarChar(300)
+  bio                  String?           @db.Text
+
+  // Bank & Financial
+  bankName             String?           @map("bank_name") @db.VarChar(150)
+  bankAccountNumber    String?           @map("bank_account_number") @db.VarChar(40)
+  bankRoutingCode      String?           @map("bank_routing_code") @db.VarChar(30)
+  bankHolderName       String?           @map("bank_holder_name") @db.VarChar(150)
+
+  // Emergency Contact
+  emergencyContactName     String?       @map("emergency_contact_name") @db.VarChar(150)
+  emergencyContactRelation String?       @map("emergency_contact_relation") @db.VarChar(50)
+  emergencyContactPhone    String?       @map("emergency_contact_phone") @db.VarChar(20)
+
+  // Relations
+  reportingManager     User?             @relation("ReportingManager", fields: [reportingManagerId], references: [id], onDelete: SetNull)
+  directReports        User[]            @relation("ReportingManager")
   ownedWorkspaces      Workspace[]       @relation("WorkspaceOwner")
   workspaceMemberships WorkspaceMember[]
   ledProjects          Project[]         @relation("ProjectLead")

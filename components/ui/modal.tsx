@@ -38,7 +38,7 @@ export function Modal({ open, onOpenChange, title, children, dismissible = true,
           <div className="mb-4 flex items-center justify-between border-b border-[var(--color-border)] pb-3">
             <Dialog.Title className="text-lg font-bold text-[var(--color-text-primary)]">{title}</Dialog.Title>
             {showCloseButton ? (
-              <Dialog.Close className="rounded-none border border-[var(--color-border)] p-1 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]">
+              <Dialog.Close className="cursor-pointer rounded-none border border-[var(--color-border)] p-1 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]">
                 <X className="size-4" />
               </Dialog.Close>
             ) : null}

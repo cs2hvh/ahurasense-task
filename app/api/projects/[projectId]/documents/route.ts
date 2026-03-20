@@ -16,6 +16,8 @@ export async function GET(
     const { projectId } = await params;
     const { searchParams } = new URL(request.url);
     const folderId = searchParams.get("folderId");
+    const view = searchParams.get("view"); // "shared" | "mine" | null (all)
+    const search = searchParams.get("q")?.trim();
 
     const membership = await prisma.projectMember.findFirst({
       where: { projectId, userId: auth.session.user.id },
@@ -23,29 +25,65 @@ export async function GET(
 
     if (!membership) return fail("Forbidden", 403);
 
-    // Build access filter: show docs the user owns, docs in public folders, or docs shared with them
-    const sharedDocIds = await prisma.documentAccess.findMany({
-      where: { userId: auth.session.user.id },
-      select: { documentId: true },
-    });
-    const sharedIds = sharedDocIds.map((d) => d.documentId);
+    const userId = auth.session.user.id;
 
-    const publicFolderIds = await prisma.documentFolder.findMany({
-      where: { projectId, isPublic: true },
-      select: { id: true },
-    });
-    const publicIds = publicFolderIds.map((f) => f.id);
+    // Build the where clause based on the view
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let accessFilter: any;
+
+    if (view === "shared") {
+      // Only show docs explicitly shared with me (not created by me)
+      accessFilter = {
+        createdById: { not: userId },
+        accessList: { some: { userId } },
+      };
+    } else if (view === "mine") {
+      // Only show docs I created
+      accessFilter = { createdById: userId };
+    } else {
+      // Show all visible docs
+      const publicFolderIds = await prisma.documentFolder.findMany({
+        where: { projectId, isPublic: true },
+        select: { id: true },
+      });
+      const publicIds = publicFolderIds.map((f) => f.id);
+
+      accessFilter = {
+        OR: [
+          { createdById: userId },
+          { accessList: { some: { userId } } },
+          { folderId: { in: publicIds } },
+        ],
+      };
+    }
+
+    // Folder filter — for "shared" view, show all folders (flat)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let folderFilter: any = {};
+    if (view !== "shared") {
+      if (folderId === "root") {
+        folderFilter = { folderId: null };
+      } else if (folderId) {
+        folderFilter = { folderId };
+      }
+    }
+
+    // Search filter
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let searchFilter: any = {};
+    if (search) {
+      searchFilter = {
+        title: { contains: search },
+      };
+    }
 
     const documents = await prisma.document.findMany({
       where: {
         projectId,
-        folderId: folderId === "root" ? null : folderId ?? undefined,
         issueId: null,
-        OR: [
-          { createdById: auth.session.user.id },
-          { id: { in: sharedIds } },
-          { folderId: { in: publicIds } },
-        ],
+        ...folderFilter,
+        ...accessFilter,
+        ...searchFilter,
       },
       orderBy: { updatedAt: "desc" },
       select: {
@@ -66,7 +104,7 @@ export async function GET(
             avatarUrl: true,
           },
         },
-        folder: { select: { isPublic: true } },
+        folder: { select: { id: true, name: true, isPublic: true } },
         accessList: {
           select: {
             userId: true,

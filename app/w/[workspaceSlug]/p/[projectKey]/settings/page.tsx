@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 
 import { ProjectGeneralSettingsForm } from "@/components/project/project-general-settings-form";
@@ -14,6 +14,9 @@ export default async function ProjectSettingsPage({
   params: Promise<{ workspaceSlug: string; projectKey: string }>;
 }) {
   const session = await getAuthSession();
+  if (!session?.user?.id) {
+    redirect("/auth/login");
+  }
   const { workspaceSlug, projectKey } = await params;
 
   const project = await prisma.project.findFirst({
@@ -54,6 +57,10 @@ export default async function ProjectSettingsPage({
     workspaceMembership?.role === "owner" ||
     workspaceMembership?.role === "admin" ||
     currentProjectMember?.role === "lead";
+
+  if (!canManage) {
+    redirect(`/w/${workspaceSlug}/p/${projectKey}`);
+  }
 
   const isWorkspaceOwner = workspaceMembership?.role === "owner";
 

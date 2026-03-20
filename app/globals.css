@@ -69,6 +69,16 @@ textarea {
   border-radius: 0;
 }
 
+button,
+select,
+[role="button"],
+input[type="checkbox"],
+input[type="radio"],
+input[type="file"],
+label[for] {
+  cursor: pointer;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
