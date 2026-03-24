@@ -54,6 +54,7 @@ async function getDocumentWithAccess(documentId: string, userId: string) {
 
   const membership = await prisma.projectMember.findFirst({
     where: { projectId: document.projectId, userId },
+    select: { id: true, role: true },
   });
 
   if (!membership) return { error: fail("Forbidden", 403) } as const;
@@ -168,8 +169,10 @@ export async function DELETE(
     const result = await getDocumentWithAccess(id, auth.session.user.id);
     if ("error" in result) return result.error;
 
-    if (result.accessLevel !== "owner") {
-      return fail("Only the document owner can delete it", 403);
+    // Allow document owner OR project lead to delete
+    const isProjectLead = result.membership.role === "lead";
+    if (result.accessLevel !== "owner" && !isProjectLead) {
+      return fail("Only the document owner or project lead can delete it", 403);
     }
 
     const doc = result.document;

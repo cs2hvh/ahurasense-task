@@ -17,6 +17,7 @@ import {
   Lock,
   MoreVertical,
   MoveRight,
+  Pin,
   Search,
   Share2,
   Trash2,
@@ -25,7 +26,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState, useEffect, useCallback, type ComponentType } from "react";
 import { toast } from "sonner";
 
@@ -105,8 +106,11 @@ const VIEW_TABS: { key: DocView; label: string; icon: ComponentType<{ className?
   { key: "shared", label: "Shared with me", icon: Users },
 ];
 
-export function DocumentList({ projectId, currentUserId }: { projectId: string; currentUserId: string }) {
+export function DocumentList({ projectId, currentUserId, userRole }: { projectId: string; currentUserId: string; userRole: string }) {
+  const isProjectLead = userRole === "lead";
   const { workspaceSlug, projectKey } = useParams<{ workspaceSlug: string; projectKey: string }>();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [folders, setFolders] = useState<FolderItem[]>([]);
@@ -114,11 +118,37 @@ export function DocumentList({ projectId, currentUserId }: { projectId: string; 
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
-  const [activeView, setActiveView] = useState<DocView>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Derive navigation state from URL search params
+  const currentFolderId = searchParams.get("folder") || null;
+  const activeView: DocView = (searchParams.get("view") as DocView) || "all";
+  const viewMode: "grid" | "list" = (searchParams.get("mode") as "grid" | "list") || "list";
+
+  // Helper to update URL search params (pushes to browser history)
+  const updateParams = useCallback((updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const [key, value] of Object.entries(updates)) {
+      if (value === null || value === "") {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+    }
+    const qs = params.toString();
+    const basePath = `/w/${workspaceSlug}/p/${projectKey}/documents`;
+    router.push(qs ? `${basePath}?${qs}` : basePath);
+  }, [searchParams, router, workspaceSlug, projectKey]);
+
+  const setCurrentFolderId = useCallback((id: string | null) => {
+    updateParams({ folder: id });
+  }, [updateParams]);
+
+  const setViewMode = useCallback((mode: "grid" | "list") => {
+    updateParams({ mode: mode === "list" ? null : mode });
+  }, [updateParams]);
+
 
   // Folder modal state
   const [showCreateFolder, setShowCreateFolder] = useState(false);
@@ -192,7 +222,11 @@ export function DocumentList({ projectId, currentUserId }: { projectId: string; 
     return () => document.removeEventListener("click", handler);
   }, [menuOpenId]);
 
-  const currentFolders = activeView === "shared" ? [] : folders.filter((f) => f.parentId === currentFolderId);
+  const currentFolders = activeView === "shared"
+    ? []
+    : folders
+        .filter((f) => f.parentId === currentFolderId)
+        .sort((a, b) => (a.isPublic === b.isPublic ? 0 : a.isPublic ? -1 : 1));
 
   // Build breadcrumb path
   const breadcrumbs: { id: string | null; name: string }[] = [{ id: null, name: "Documents" }];
@@ -212,9 +246,8 @@ export function DocumentList({ projectId, currentUserId }: { projectId: string; 
   const totalSize = documents.reduce((sum, d) => sum + d.fileSize, 0);
 
   function switchView(view: DocView) {
-    setActiveView(view);
-    setCurrentFolderId(null);
     setSearchQuery("");
+    updateParams({ view: view === "all" ? null : view, folder: null });
   }
 
   async function handleUpload(file: File) {
@@ -511,7 +544,8 @@ export function DocumentList({ projectId, currentUserId }: { projectId: string; 
     item: FolderItem | DocumentItem,
   ) {
     if (menuOpenId !== menuKey) return null;
-    const owner = type === "document" ? isDocOwner(item as DocumentItem) : (item as FolderItem).createdBy.id === currentUserId;
+    const isOwnerOrCreator = type === "document" ? isDocOwner(item as DocumentItem) : (item as FolderItem).createdBy.id === currentUserId;
+    const canManage = isOwnerOrCreator || isProjectLead;
     return (
       <div
         className="absolute right-0 top-full z-30 mt-1 w-44 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] py-1 shadow-xl"
@@ -543,7 +577,7 @@ export function DocumentList({ projectId, currentUserId }: { projectId: string; 
             </a>
           </>
         )}
-        {owner && (
+        {canManage && (
           <>
             {type === "document" && (
               <button
@@ -754,7 +788,7 @@ export function DocumentList({ projectId, currentUserId }: { projectId: string; 
         </div>
       ) : viewMode === "list" ? (
         /* ════ LIST VIEW ════ */
-        <div className="overflow-hidden border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+        <div className="border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
           {/* Table header */}
           <div className="flex items-center gap-3 border-b border-[var(--color-border)] bg-[var(--color-bg-primary)] px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)]">
             <span className="flex-1">Name</span>
@@ -783,9 +817,12 @@ export function DocumentList({ projectId, currentUserId }: { projectId: string; 
                   )}
                   <span className="truncate text-sm font-medium text-[var(--color-text-primary)]">{folder.name}</span>
                   {folder.isPublic && (
-                    <span className="inline-flex items-center gap-1 rounded-sm bg-green-500/10 px-1.5 py-0.5 text-[10px] font-medium text-green-400">
-                      <Globe className="size-2.5" /> Public
-                    </span>
+                    <>
+                      <span className="inline-flex items-center gap-1 rounded-sm bg-green-500/10 px-1.5 py-0.5 text-[10px] font-medium text-green-400">
+                        <Globe className="size-2.5" /> Public
+                      </span>
+                      <Pin className="size-3 rotate-45 text-[var(--color-text-tertiary)]" />
+                    </>
                   )}
                   <span className="shrink-0 text-[11px] text-[var(--color-text-tertiary)]">
                     {folder._count.documents + folder._count.children} item{(folder._count.documents + folder._count.children) !== 1 ? "s" : ""}
@@ -804,7 +841,7 @@ export function DocumentList({ projectId, currentUserId }: { projectId: string; 
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === menuKey ? null : menuKey); }}
-                        className="inline-flex size-7 items-center justify-center text-[var(--color-text-tertiary)] opacity-0 transition-all hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)] group-hover:opacity-100"
+                        className="inline-flex size-7 items-center justify-center text-[var(--color-text-tertiary)] transition-all hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]"
                       >
                         <MoreVertical className="size-3.5" />
                       </button>
@@ -840,9 +877,9 @@ export function DocumentList({ projectId, currentUserId }: { projectId: string; 
 
                 <button
                   type="button"
-                  onClick={() => owner ? void openShareModal(doc) : undefined}
-                  className={`hidden w-20 shrink-0 items-center gap-1 text-xs sm:flex ${badge.color} ${owner ? "hover:underline" : ""}`}
-                  disabled={!owner}
+                  onClick={() => (owner || isProjectLead) ? void openShareModal(doc) : undefined}
+                  className={`hidden w-20 shrink-0 items-center gap-1 text-xs sm:flex ${badge.color} ${(owner || isProjectLead) ? "hover:underline" : ""}`}
+                  disabled={!owner && !isProjectLead}
                 >
                   <BadgeIcon className="size-3" /> {badge.label}
                 </button>
@@ -869,7 +906,7 @@ export function DocumentList({ projectId, currentUserId }: { projectId: string; 
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === menuKey ? null : menuKey); }}
-                    className="inline-flex size-7 items-center justify-center text-[var(--color-text-tertiary)] opacity-0 transition-all hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)] group-hover:opacity-100"
+                    className="inline-flex size-7 items-center justify-center text-[var(--color-text-tertiary)] transition-all hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]"
                   >
                     <MoreVertical className="size-3.5" />
                   </button>
@@ -912,6 +949,9 @@ export function DocumentList({ projectId, currentUserId }: { projectId: string; 
                           {folder._count.documents + folder._count.children} item{(folder._count.documents + folder._count.children) !== 1 ? "s" : ""}
                         </p>
                       </div>
+                      {folder.isPublic && (
+                        <Pin className="size-3 rotate-45 text-[var(--color-text-tertiary)]" />
+                      )}
                       {!folder.isPublic && (
                         <div className="absolute right-1 top-1 opacity-0 transition-opacity group-hover:opacity-100">
                           <button
